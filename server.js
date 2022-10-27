@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import passport from 'passport';
 
-const seedsRoute = require('./api/routes/seeds');
+const cardRoute = require('./api/routes/cardRoute');
+const categoryRoute = require('./api/routes/categoryRoute');
 
 import {jwtAuthStrategy} from './api/config/passportConfig';
 
@@ -11,7 +12,7 @@ let app = express();
 let port = process.env.PORT || 8080;
 
 // Mongoose instance connection url connection
-const databaseUrl = process.env.Z2R_DB_URL;
+const databaseUrl = process.env.JP_DB_URL;
 mongoose.Promise = global.Promise;
 
 /*
@@ -30,7 +31,7 @@ connectWithRetry();
 
 passport.use(jwtAuthStrategy);
 
-app.use(express.json({limit: "50Mb"}))
+app.use(express.json({limit: "50Mb"}));
 app.use(cors());
 app.use(passport.initialize());
 
@@ -43,7 +44,8 @@ app.use((req, res, next) => {
 /*
  * Routes 
  */
-app.use('/seeds', passport.authenticate("jwt", { session: false }), seedsRoute);
+app.use('/cards', passport.authenticate("jwt", { session: false }), cardRoute);
+app.use('/categories', passport.authenticate("jwt", { session: false }), categoryRoute);
 
 app.listen(port);
-console.log('Z2R Seed Vault RESTful API server started on: ' + port);
+console.log('Jeopardy RESTful API server started on: ' + port);
