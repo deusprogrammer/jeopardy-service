@@ -46,7 +46,7 @@ const createSession = async (roundCount, maxPlayers) => {
         roundCount,
         maxPlayers,
         rounds: [],
-        players: {}
+        players
     };
     let categoryMaps = [];
     for (let i = 0; i < roundCount; i++) {
@@ -75,9 +75,9 @@ const createSession = async (roundCount, maxPlayers) => {
 router.route("/")
     .post(async (req, res) => {
         try {
-            let {rounds, maxPlayers} = req.body;
+            let {rounds, players} = req.body;
             let uuid = uuidv4();
-            let session = await createSession(rounds, maxPlayers);
+            let session = await createSession(rounds, players);
             session.id = uuid;
             sessionStore[uuid] = session;
 
