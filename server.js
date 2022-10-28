@@ -5,6 +5,7 @@ import passport from 'passport';
 
 const cardRoute = require('./api/routes/cardRoute');
 const categoryRoute = require('./api/routes/categoryRoute');
+const sessionRoute = require('./api/routes/sessionRoute');
 
 import {jwtAuthStrategy} from './api/config/passportConfig';
 
@@ -46,6 +47,7 @@ app.use((req, res, next) => {
  */
 app.use('/cards', passport.authenticate("jwt", { session: false }), cardRoute);
 app.use('/categories', passport.authenticate("jwt", { session: false }), categoryRoute);
+app.use('/sessions', passport.authenticate("jwt", { session: false }), sessionRoute);
 
 app.listen(port);
 console.log('Jeopardy RESTful API server started on: ' + port);

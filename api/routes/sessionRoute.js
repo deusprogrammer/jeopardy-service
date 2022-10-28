@@ -1,54 +1,151 @@
 const express = require('express');
+const { v4: uuidv4 } = require('uuid');
+
 const Categories = require('../models/categoryModel');
 const Cards = require('../models/cardModel');
 
 const router = express.Router();
 
-const uuidv4 = () => {
-    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
-}
+const sessionStore = {};
 
-const getMultipleRandom = (arr, num) => {
-    const shuffled = [...arr].sort(() => 0.5 - Math.random());
-  
-    return shuffled.slice(0, num);
-}
+const SESSION_TTL = 1000 * 60 * 60 * 2;
+const SESSION_CHECK_FREQ = 1000 * 60;
 
-const createSession = async () => {
-    let categories = await Categories.find({}, null).exec();
-    let selectedCategories = getMultipleRandom(categories, 6);
+// Check for dead sessions
+setInterval(() => {
+    cleanupSessions(SESSION_TTL);
+}, SESSION_CHECK_FREQ);
 
-    let categoryMaps = [];
-    for (let category of selectedCategories.map(selectedCategory => selectedCategory.categoryString)) {
-        let categoryMap = {name: category, cards: []};
-        for (let difficulty = 1; difficulty <= 5; difficulty++) {
-            let {data: cards} = await axios.get(`${cardUrl}?category=${category}&difficulty=${difficulty}`, {
-                headers: {
-                    "X-Access-Token": localStorage.getItem("accessToken")
-                }
-            });
-            if (cards.length < 0) {
-                throw new Error("No difficulty found");
-            }
-            categoryMap.cards.push(cards[0]);
+const cleanupSessions = (ttlms) => {
+    for (sessionId in sessionStore) {
+        let session = sessionStore[sessionId];
+        let sessionAge = Date.now() - session.lastUpdated;
+        if (sessionAge >= ttlms) {
+            console.log(`Cleaning up session ${sessionId} because it is ${sessionAge}ms old`);
+            delete sessionStore[sessionId];
         }
-        categoryMaps.push(categoryMap);
     }
 }
 
-const sessionStore = {};
+const getMultipleRandom = (arr, num) => {
+    if (num > arr.length) {
+        throw new Error(`There are not enough elements to pull ${num} elements`);
+    }
+
+    const shuffled = [...arr].sort(() => 0.5 - Math.random());
+  
+    return [shuffled.slice(0, num), shuffled.slice(num)];
+}
+
+const createSession = async (roundCount, maxPlayers) => {
+    let remainingCategories = await Categories.find({}, null).exec();
+
+    let session = {
+        lastUpdated: Date.now(),
+        roundCount,
+        maxPlayers,
+        rounds: [],
+        players: {}
+    };
+    let categoryMaps = [];
+    for (let i = 0; i < roundCount; i++) {
+        let [selectedCategories, newRemainingCategories] = getMultipleRandom(remainingCategories, 6);
+        remainingCategories = newRemainingCategories;
+        for (let category of selectedCategories.map(selectedCategory => selectedCategory.categoryString)) {
+            let categoryMap = {name: category, cards: []};
+            for (let difficulty = 1; difficulty <= 5; difficulty++) {
+                let cards = await Cards.find({category, difficulty}, null).exec();
+                if (cards.length < 0) {
+                    throw new Error("No difficulty found");
+                }
+                let [card] = getMultipleRandom(cards, 1);
+                categoryMap.cards.push(card);
+            }
+            categoryMaps.push(categoryMap);
+        }
+        session.rounds.push({
+            categories: categoryMaps
+        });
+    }
+
+    return session;
+}
 
 router.route("/")
-    .post((req, res) => {
-        
-        sessionStore[uuidv4()] = {
+    .post(async (req, res) => {
+        try {
+            let {rounds, maxPlayers} = req.body;
+            let uuid = uuidv4();
+            let session = await createSession(rounds, maxPlayers);
+            session.id = uuid;
+            sessionStore[uuid] = session;
 
-        };
-    })
+            return res.json(session);
+        } catch (error) {
+            console.error("Unable to create session ", error);
+            res.status(500);
+            return res.send();
+        }
+    });
 
 router.route("/:id")
     .get((req, res) => {
+        let session = sessionStore[req.params.id];
 
+        if (!session) {
+            res.status(404);
+            return res.send();
+        }
+
+        session.lastUpdated = Date.now();
+        sessionStore[req.params.id] = session;
+
+        return res.json(session);
     })
+    .put((req, res) => {
+        let session = sessionStore[req.params.id];
+
+        if (!session) {
+            res.status(404);
+            return res.send();
+        }
+
+        session.lastUpdated = Date.now();
+        sessionStore[req.params.id] = session;
+
+        return res.json(session);
+    });
+
+router.route("/:id/players")
+    .post((req, res) => {
+        let session = sessionStore[req.params.id];
+
+        if (!session) {
+            res.status(404);
+            return res.send();
+        }
+
+        session.lastUpdated = Date.now();
+        session.players[uuidv4()] = req.body;
+        sessionStore[req.params.id] = session;
+
+        return res.json(session);
+    });
+
+router.route("/:id/players/:playerId")
+    .put((req, res) => {
+        let session = sessionStore[req.params.id];
+
+        if (!session && !session.players[req.params.playerId]) {
+            res.status(404);
+            return res.send();
+        }
+
+        session.lastUpdated = Date.now();
+        session.players[req.params.playerId] = req.body;
+        sessionStore[req.params.id] = session;
+
+        return res.json(session);
+    });
+
+module.exports = router;
