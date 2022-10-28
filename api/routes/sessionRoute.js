@@ -130,6 +130,19 @@ router.route("/:id/players")
         sessionStore[req.params.id] = session;
 
         return res.json(session);
+    }).put((req, res) => {
+        let session = sessionStore[req.params.id];
+
+        if (!session) {
+            res.status(404);
+            return res.send();
+        }
+
+        session.lastUpdated = Date.now();
+        session.players = req.body;
+        sessionStore[req.params.id] = session;
+
+        return res.json(session);
     });
 
 router.route("/:id/players/:playerId")
