@@ -59,7 +59,7 @@ const createSession = async (roundCount, players) => {
                     throw new Error("No difficulty found");
                 }
                 let [card] = getMultipleRandom(cards, 1);
-                categoryMap.cards.push(card);
+                categoryMap.cards.push(card[0]);
             }
             categoryMaps.push(categoryMap);
         }
