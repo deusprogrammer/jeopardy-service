@@ -37,7 +37,7 @@ const getMultipleRandom = (arr, num) => {
     return [shuffled.slice(0, num), shuffled.slice(num)];
 }
 
-const createSession = async (roundCount, maxPlayers) => {
+const createSession = async (roundCount, players) => {
     let remainingCategories = await Categories.find({}, null).exec();
 
     let session = {
