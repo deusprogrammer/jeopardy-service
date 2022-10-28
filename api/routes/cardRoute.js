@@ -1,14 +1,15 @@
 const express = require('express');
 const Cards = require('../models/cardModel');
 
-import {authenticatedUserHasRole, getAuthenticatedTwitchUserId} from '../utils/SecurityHelper';
+import {authenticatedUserHasRole} from '../utils/SecurityHelper';
 
 let router = express.Router();
 
 router.route("/")
     .get(async (request, response) => {
         try {
-            let cards = await Cards.find({}, null).exec();
+            let queryParams = request.query;
+            let cards = await Cards.find(queryParams, null).exec();
             return response.json(cards);
         } catch (error) {
             console.error(error);
