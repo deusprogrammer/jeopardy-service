@@ -44,7 +44,6 @@ const createSession = async (roundCount, players) => {
         lastUpdated: Date.now(),
         currentRound: 0,
         roundCount,
-        maxPlayers,
         rounds: [],
         players
     };
