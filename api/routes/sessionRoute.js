@@ -17,9 +17,11 @@ setInterval(() => {
 }, SESSION_CHECK_FREQ);
 
 const cleanupSessions = (ttlms) => {
+    console.log("Checking for dead sessions");
     for (sessionId in sessionStore) {
         let session = sessionStore[sessionId];
         let sessionAge = Date.now() - session.lastUpdated;
+        console.log("Checking session " + id + " with session age " + sessionAge + "(TTL: " + ttlms + "ms)");
         if (sessionAge >= ttlms) {
             console.log(`Cleaning up session ${sessionId} because it is ${sessionAge}ms old`);
             delete sessionStore[sessionId];
